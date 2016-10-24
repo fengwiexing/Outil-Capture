@@ -43,19 +43,24 @@
             color: #fff;
             margin-left:10px;
         }
-        #btnBox{margin:10px 0 10px 22px; color:#fff}
+        #btnBox{margin:10px 0 10px 22px; color:#fff;overflow:hidden;}
         #btnBox a, #btnBox span{
-            display:inline-block;
+            display:block;
             background:#999;
             padding:5px;
             border-radius:3px;
             color:#0841c7;
+            float:left;
+            margin-right:10px;
         }
         #btnBox a{
             text-decoration:none;
         }
         #btnBox span{
             cursor:pointer;
+        }
+      #btnBox span:active{
+             background:#b4233e;
         }
         #btnBox .present{
             color:#999;
@@ -64,14 +69,14 @@
     </style>
 </head>
 <body>
-    <div id="btnBox"> 按下ctrl键向右拖动鼠标加宽，按下shift键向下拖动鼠标加高，鼠标移入图形按下可拖曳，如果同时按下键盘可同时加宽或高，自动定义图形连续点击切割的图形即可<br />
+    <div id="btnBox"> 按下ctrl键向右拖动鼠标加宽，按下shift键向下拖动鼠标加高，鼠标移入图形按下可拖曳，如果同时按下键盘可同时加宽或高，自动定义图形连续点击切割的图形即可，可撤退10步<br />
         <a href="javascript:" class="arcImg" data-shape="arcImg">圆形</a>
         <a href="javascript:" class="strokeRectImg present" data-shape="strokeRectImg">矩形形</a>
         <a href="javascript:" class="trigonImg" data-shape="trigonImg" >三角形</a>
         <a href="javascript:" class="pentagramImg" data-shape="pentagramImg">五角形</a>
         <a href="javascript:" class="custom" data-shape="custom">自定义</a>
-        <span style="margin-left:500px;">点击下载截剪切图片,IE暂不支持</span>
-       
+        <span id="withdraw">撤退</span>
+        <span style="margin-left:420px;" id="download">点击下载截剪切图片,IE暂不支持</span>
     </div>
     <div class="box">
         <img id="eleImg" class="shear" src="imge/8821914_104238545177_2.jpg" />
@@ -97,6 +102,8 @@
                setIn = null, //自定义图形的定时器
                can1Arry = [],//处定义图形存放的坐标
             ImgsShape = "strokeRectImg";//默认形状
+
+            var withdrawArry = [];//保存撤退的函数的数组
 
             var canOffset=$(can1).offset(),
                 can1Xoffset = canOffset.left,//canvas1偏离窗口的坐标
@@ -169,6 +176,9 @@
                 e = e || window.event;
                 clearInterval(setIn);//停止自定义图形的定时器
                 can1Arry.length = 0; //清空自定义图形存放的坐标
+
+                withdrawArry = [];//清空撤退数组
+
                 var self = $(e.target);
 
                 defaultSize = 20; //换图形初始化默认数据
@@ -252,10 +262,39 @@
             }
 
 
+            var withdrawFn = function () { //撤退函数
+                var setI = null;//定时器
+                return function (offset, args) {
+                    var arr = [];
+                    for (var i = 0, l = args.length; i < l; i++) {//考贝执行图形的参数
+                        arr[i] = args[i];
+                    }
+                    if (offset instanceof Object) {
+                        arr.unshift(offset)
+                    }
+          
+                    if (setI) {
+                        return;
+                    }
+                    setI = setTimeout(function () {
+                        clearTimeout(setI);
+                        setI = null;
+                        if (withdrawArry.length > 10) { //只能撤退10步
+                            withdrawArry.shift();
+                            withdrawArry.push(arr) //保存执行图形的参数
+                        } else {
+                            withdrawArry.push(arr)//保存执行图形的参数
+                        }
+                    }, 800)
+                }
+            }();
+
             //绘制图形
             portray(ImgsShape, ctx1);
+            //绘制图形
             function portray() {
                 var obj = arguments[0] instanceof Object ? [].shift.call(arguments) : null;//如果第一个参数是对象
+                 withdrawFn(obj, arguments);
 
                 ctx1.clearRect(0, 0, can1W, can1H);
                 ctx1.save();
@@ -271,7 +310,24 @@
                 ctx1.restore();
                 return WHarry;//返回图形大小
             }
-
+            //撤退执行绘制图形函数
+            function portray2() {
+                var obj = arguments[0] instanceof Object ? [].shift.call(arguments) : null;//如果第一个参数是对象
+                ctx1.clearRect(0, 0, can1W, can1H);
+                ctx1.save();
+                ctx1.save();
+                if (obj && obj.translsteCan) { //如果有偏移的属性
+                    var translsteCan = obj.translsteCan;
+                    ctx1.translate(translsteCan[0], translsteCan[1]);
+                }
+                var WHarry = patterningContext.apply(this, arguments);//绘制图形返回图形大小
+                ctx1.restore();
+                ctx1.clip();
+                ctx1.drawImage(img, 0, 0, can1W, can1H);
+                ctx1.restore();
+                return WHarry;//返回图形大小
+            }
+        
             //是否移入绘制的图片
             moveFn();
             function moveFn() {
@@ -368,7 +424,7 @@
             }
 
             //下载第二个canvas的图片
-            $("#btnBox").on('click', 'span', downloadImg);
+            $("#download").on('click', downloadImg);
             function downloadImg() {
                 var img = canvas2.toDataURL("image/png").replace("image/png", "image/octet-stream");
                 save(img);
@@ -400,6 +456,35 @@
                 saveFile(imgData, filename);
             }
 
+
+
+            //点击撤退按钮
+            $("#withdraw").on('click', function () {
+                if (ImgsShape !== "custom") { //如果没有撤退到最早的一步并且不是自定义绘制图形
+                  
+                    if (withdrawArry.length < 2) return;
+                    var ars = withdrawArry.pop();//取出最后一次绘制图形的参数
+
+                   var WHarry = portray2.apply(window, ars);//重新绘制上一次图形，返回一次绘制图形大小
+                    can2W = WHarry[0];
+                    can2H = WHarry[1];
+                   
+                    if (ars[0] instanceof Object) { //如果有偏移的参数
+                        translsteValueX = ars[0]["translsteCan"][0];
+                        translsteValueY = ars[0]["translsteCan"][1];
+                    }
+                    var conut = ars.length - 1;
+                    if ((typeof ars[conut] === 'number') && (typeof ars[conut - 1] === 'number')) { //如果有绘制图形大小的参数
+                        defaultSize = ars[conut-1]; //换图形初始化默认数据
+                        defaultHSize = ars[conut];
+                    }   
+                } else {
+                    can1Arry.pop();
+                    custom()
+                }
+
+                canvas2IMG();//把图形绘制到canvas2上面
+            });
         });
     </script>
 </body>
