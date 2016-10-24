@@ -103,7 +103,8 @@
                can1Arry = [],//处定义图形存放的坐标
             ImgsShape = "strokeRectImg";//默认形状
 
-            var withdrawArry = [];//保存撤退的函数的数组
+            var withdrawArry = [],//保存撤退的函数的数组
+                withdrawBool = false;//是否按下撤退按钮
 
             var canOffset=$(can1).offset(),
                 can1Xoffset = canOffset.left,//canvas1偏离窗口的坐标
@@ -294,7 +295,7 @@
             //绘制图形
             function portray() {
                 var obj = arguments[0] instanceof Object ? [].shift.call(arguments) : null;//如果第一个参数是对象
-                 withdrawFn(obj, arguments);
+                withdrawBool ? withdrawBool : withdrawFn(obj, arguments);//是否按下撤退按钮
 
                 ctx1.clearRect(0, 0, can1W, can1H);
                 ctx1.save();
@@ -308,26 +309,10 @@
                 ctx1.clip();
                 ctx1.drawImage(img, 0, 0, can1W, can1H);
                 ctx1.restore();
+                withdrawBool = false;//是否按下撤退按钮
                 return WHarry;//返回图形大小
             }
-            //撤退执行绘制图形函数
-            function portray2() {
-                var obj = arguments[0] instanceof Object ? [].shift.call(arguments) : null;//如果第一个参数是对象
-                ctx1.clearRect(0, 0, can1W, can1H);
-                ctx1.save();
-                ctx1.save();
-                if (obj && obj.translsteCan) { //如果有偏移的属性
-                    var translsteCan = obj.translsteCan;
-                    ctx1.translate(translsteCan[0], translsteCan[1]);
-                }
-                var WHarry = patterningContext.apply(this, arguments);//绘制图形返回图形大小
-                ctx1.restore();
-                ctx1.clip();
-                ctx1.drawImage(img, 0, 0, can1W, can1H);
-                ctx1.restore();
-                return WHarry;//返回图形大小
-            }
-        
+  
             //是否移入绘制的图片
             moveFn();
             function moveFn() {
@@ -463,9 +448,11 @@
                 if (ImgsShape !== "custom") { //如果没有撤退到最早的一步并且不是自定义绘制图形
                   
                     if (withdrawArry.length < 2) return;
+
                     var ars = withdrawArry.pop();//取出最后一次绘制图形的参数
 
-                   var WHarry = portray2.apply(window, ars);//重新绘制上一次图形，返回一次绘制图形大小
+                    withdrawBool = true;//是否按下撤退按钮
+                   var WHarry = portray.apply(window, ars);//重新绘制上一次图形，返回一次绘制图形大小
                     can2W = WHarry[0];
                     can2H = WHarry[1];
                    
@@ -479,8 +466,8 @@
                         defaultHSize = ars[conut];
                     }   
                 } else {
-                    can1Arry.pop();
-                    custom()
+                    can1Arry.pop();//撤退一步自定义坐标
+                    custom()//执行自定义绘制
                 }
 
                 canvas2IMG();//把图形绘制到canvas2上面
