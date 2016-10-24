@@ -1,0 +1,406 @@
+﻿
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+    <meta charset="utf-8" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #000;
+        }
+
+        .box {
+            width: 650px;
+            height: 550px;
+            overflow: hidden;
+            position: relative;
+            float: left;
+            margin: 0px 0 0 20px;
+        }
+
+        .shear {
+            width: 100%;
+            height: 100%;
+            opacity: 0.2;
+        }
+
+
+        #canvas1 {
+            position:absolute;
+            left:0;
+            top:0;
+            z-index:2;
+        }
+
+        #canvas2 {
+            float: left;
+            color: #fff;
+            margin-left:10px;
+        }
+        #btnBox{margin:10px 0 10px 22px; color:#fff}
+        #btnBox a, #btnBox span{
+            display:inline-block;
+            background:#999;
+            padding:5px;
+            border-radius:3px;
+            color:#0841c7;
+        }
+        #btnBox a{
+            text-decoration:none;
+        }
+        #btnBox span{
+            cursor:pointer;
+        }
+        #btnBox .present{
+            color:#999;
+            background:#4f4949;
+        }
+    </style>
+</head>
+<body>
+    <div id="btnBox"> 按下ctrl键向右拖动鼠标加宽，按下shift键向下拖动鼠标加高，鼠标移入图形按下可拖曳，如果同时按下键盘可同时加宽或高，自动定义图形连续点击切割的图形即可<br />
+        <a href="javascript:" class="arcImg" data-shape="arcImg">圆形</a>
+        <a href="javascript:" class="strokeRectImg present" data-shape="strokeRectImg">矩形形</a>
+        <a href="javascript:" class="trigonImg" data-shape="trigonImg" >三角形</a>
+        <a href="javascript:" class="pentagramImg" data-shape="pentagramImg">五角形</a>
+        <a href="javascript:" class="custom" data-shape="custom">自定义</a>
+        <span style="margin-left:500px;">点击下载截剪切图片,IE暂不支持</span>
+       
+    </div>
+    <div class="box">
+        <img id="eleImg" class="shear" src="imge/8821914_104238545177_2.jpg" />
+        <canvas id="canvas1" width="650" height="550">浏览器不支持</canvas>
+    </div>
+
+    <canvas id="canvas2" width="20" height="20">浏览器不支持</canvas>
+
+    <script src="js/jquery-1-11-1.js"></script>
+    <script>
+        $(function () {
+
+            //第一个canvas用于截图
+            var img = document.getElementById('eleImg'),
+                can1 = document.getElementById('canvas1'),
+                ctx1 = can1.getContext('2d'),
+               can1W = can1.width,
+               can1H = can1.height,
+               defaultSize = 20,  //默认图形宽度，或半径
+               defaultHSize = 20, //默认图形高度
+               translsteValueX = 0,//默认移动图形的值
+               translsteValueY = 0,
+               setIn = null, //自定义图形的定时器
+               can1Arry = [],//处定义图形存放的坐标
+            ImgsShape = "strokeRectImg";//默认形状
+
+            var canOffset=$(can1).offset(),
+                can1Xoffset = canOffset.left,//canvas1偏离窗口的坐标
+                can1Yoffset = canOffset.top,
+                bolcan = false; //是否点击了自定义
+
+            //第二个canvas宽高，默认跟 defaultSize 一样
+            var can2W = 20,
+                can2H = 20;
+
+            var patterningObj = {
+                //圆形 圆半径r
+                arcImg: function (ctx, r) {
+                    r = r || r === 0 ? r : defaultSize;
+                    r < 0 ? r = 0 : r;
+                    ctx.beginPath();
+                    ctx.arc(r, r, r, 0, Math.PI * 2);
+                    ctx.closePath();
+                    return [r * 2, r * 2];//返回图形大小
+                },
+                //矩形 宽w, 高h
+                strokeRectImg: function (ctx, w, h) {
+                    w = w || w === 0 ? w : defaultSize;
+                    h = h || h === 0 ? h : w;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0 + w, 0);
+                    ctx.lineTo(0 + w, 0 + h);
+                    ctx.lineTo(0, 0 + h);
+                    ctx.closePath();
+                    return [w, h];//返回图形大小
+                },
+                //三角形 宽w, 高h
+                trigonImg: function (ctx, w, h) {
+                    w = w || w === 0 ? w : defaultSize;
+                    h = h || h === 0 ? h : w;
+                    var topW = w / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(topW, 0);
+                    ctx.lineTo(w, h);
+                    ctx.lineTo(0, h);
+                    ctx.closePath();
+                    return [w, h];//返回图形大小
+                },
+                //五角星  小圆半径r, 大圆半径R
+                pentagramImg: function (ctx, r, R) {
+                    r = r ? r : defaultSize;
+                    if (!R) {
+                        R = r === 0 ? 0.5 : r * 2;
+                    }
+                    var x = R, y = R;
+                    R < r ? R == r : R;
+                    ctx.beginPath();
+                    for (var i = 0; i < 5; i++) {
+                        ctx.lineTo(Math.cos((18 + i * 72) / 180 * Math.PI) * R + x, -Math.sin((18 + i * 72) / 180 * Math.PI) * R + y);
+                        ctx.lineTo(Math.cos((54 + i * 72) / 180 * Math.PI) * r + x, -Math.sin((54 + i * 72) / 180 * Math.PI) * r + y);
+                    }
+                    ctx.closePath();
+                    return [R * 2, R * 2];//返回图形大小
+                }
+            }
+
+            var patterningContext = function () {
+                var patterning = [].shift.call(arguments);
+                return patterningObj[patterning].apply(this, arguments);//返回图形大小
+            }
+
+            //切换图形
+            $("#btnBox").on('click', 'a', function (e) {
+                e = e || window.event;
+                clearInterval(setIn);//停止自定义图形的定时器
+                can1Arry.length = 0; //清空自定义图形存放的坐标
+                var self = $(e.target);
+
+                defaultSize = 20; //换图形初始化默认数据
+                defaultHSize = 20;
+                translsteValueX = 0;
+                translsteValueY = 0;
+
+                ImgsShape = self.attr("data-shape");//获取切换到图形
+                ImgsShape == "pentagramImg" ? defaultHSize = 40 : defaultHSize = 20;//如果是五角星，大圆比小圆半径多一半
+
+                self.addClass("present").siblings().removeClass("present");//高亮显示当前图形按钮
+
+                if (ImgsShape === "custom") {//如果是自定义图形
+                    bolcan = true;
+                    can1.onmousedown = null;//清除不是自定义图形的事件
+                    can1.onmousemove = null;
+                    setIn = setInterval(custom, 100);//执行自定义图形
+                    return;
+                }
+                $(can1).off("click.can1");//清除自定义图形事件
+
+                var can2WHarry = portray(ImgsShape, ctx1);//执行不是自定义图形的图形函数，返回该图形宽高
+                can2W = can2WHarry[0];
+                can2H = can2WHarry[1];
+                canvas2IMG();
+                moveFn();//执行不是自定义图形的事件
+            });
+
+
+            //自定义图形
+            function custom() {
+                var   minX = 1,
+                      maxX = 2,
+                      minY = 1,
+                      maxY = 2;
+
+                ctx1.clearRect(0, 0, can1W, can1H);
+                ctx1.save();
+                ctx1.save();
+                ctx1.beginPath();
+                ctx1.strokeStyle = 'rgba(0,0,0,0)';
+                if (can1Arry.length > 2) {//如果点击了三次就开始绘制
+                    for (var i = 0, arrL; arrL = can1Arry[i++];) {
+                        if (i == 1) {
+                            minX = arrL[0];//用第一个坐标值初始化最大最小值
+                            maxX = arrL[0];
+                            minY = arrL[1];
+                            maxY = arrL[1];
+                        }
+                        minX > arrL[0] ? minX = arrL[0] : minX; //找到所以坐标中X和Y的最大最小值
+                        maxX < arrL[0] ? maxX = arrL[0] : maxX;
+                        minY > arrL[1] ? minY = arrL[1] : minY;
+                        maxY < arrL[1] ? maxY = arrL[1] : maxY;
+
+                        ctx1.lineTo(arrL[0], arrL[1]);//绘制图形
+                    }
+                }
+                ctx1.closePath();
+                ctx1.stroke();
+                ctx1.restore();
+                ctx1.clip();
+                ctx1.drawImage(img, 0, 0, can1W, can1H);
+                ctx1.restore();
+                if (bolcan) { //是点击自定义图形 
+                    $(can1).on("click.can1", function (e) {
+                       var  X = e.pageX,
+                            Y = e.pageY,
+                        XX = X - can1Xoffset,
+                        YY = Y - can1Yoffset;
+                       can1Arry.push([XX, YY]);//存放自定义图形的坐标
+                  
+                    });
+                }
+                bolcan = false;
+                canvas2IMG();//把自定义图形存放另外一个canvas2
+                can2W = maxX - minX; //找到绘制图形的宽度
+                can2H = maxY - minY; //找到绘制图形的高度
+                translsteValueX = minX;//设置偏移图形的值
+                translsteValueY = minY;
+
+            }
+
+
+            //绘制图形
+            portray(ImgsShape, ctx1);
+            function portray() {
+                var obj = arguments[0] instanceof Object ? [].shift.call(arguments) : null;//如果第一个参数是对象
+
+                ctx1.clearRect(0, 0, can1W, can1H);
+                ctx1.save();
+                ctx1.save();
+                if (obj && obj.translsteCan) { //如果有偏移的属性
+                    var translsteCan = obj.translsteCan;
+                    ctx1.translate(translsteCan[0], translsteCan[1]);
+                }
+                var WHarry = patterningContext.apply(this, arguments);//绘制图形返回图形大小
+                ctx1.restore();
+                ctx1.clip();
+                ctx1.drawImage(img, 0, 0, can1W, can1H);
+                ctx1.restore();
+                return WHarry;//返回图形大小
+            }
+
+            //是否移入绘制的图片
+            moveFn();
+            function moveFn() {
+                var canX = 0,//默认上一次鼠标坐标的值
+                    canY = 0,
+                       n = null,//默认按下键盘的值
+              mousedownX = 0,//默认按下鼠标坐标的值
+              mousedownY = 0,
+              mousedownBool = false; //是否在绘制的图形里按下鼠标
+
+                //鼠标按下
+                can1.onmousedown = function (e) {
+                    e = e || window.event;
+                    portray({ "translsteCan": [translsteValueX, translsteValueY] }, ImgsShape, ctx1, defaultSize, defaultHSize);
+
+                    mousedownX =  e.pageX,
+                    mousedownY =  e.pageY;
+                  
+                    if (ctx1.isPointInPath(mousedownX - can1Xoffset, mousedownY - can1Yoffset)) {
+                        mousedownBool = true;  //是否在绘制的图形里按下鼠标
+                    }
+                }
+
+                //鼠标移动
+                can1.onmousemove = function (e) {
+                    e = e || window.event;
+                    e.stopPropagation() ? e.stopPropagation() : e.cancelBubble = true;
+
+                    var x = e.clientX || e.pageX,
+                        y = e.clientY || e.pageY;
+
+                    if (mousedownBool) {//是否在绘制的图形里按下鼠标
+                        translsteValueX += (x - canX); //x - canX是当前鼠标值和上一次鼠标值的差
+                        translsteValueY += (y - canY);
+                        var WHarry = portray({ "translsteCan": [translsteValueX, translsteValueY] }, ImgsShape, ctx1, defaultSize, defaultHSize);
+                        can2W = WHarry[0];
+                        can2H = WHarry[1];
+                        canvas2IMG();//把图形存放在另外一个canvas2, 注意这里传的参数是要canvas1的宽和高;否则当拖曳图形时可能无法准确剪切canvas1的图片
+
+                    }
+
+                    $('body').on('keydown.kk keyup.kk', function (e) {
+                        e.type == "keydown" ? n = e.which : n = null; //按下哪个键，释放键里值为 -1
+                    });
+
+                    if (n == 17) {//按下ctrl 
+                        kck(x - canX)         //x - canX是当前鼠标值和上一次鼠标值的差
+                    } else if (n == 16) {//按下 shift
+                        kck(y - canY, 16);    //y - canY是当前鼠标值和上一次鼠标值的差
+                    }
+
+                    canX = x;//保存上一次鼠标值
+                    canY = y;
+                }
+                //鼠标移出canvas1
+                can1.onmouseout = function () {
+                    $('body').off('keydown.kk keyup.kk');//移除键盘事件
+                }
+                //鼠标释放
+                can1.onmouseup = function (e) {
+                    mousedownBool = false;//把鼠标在绘制图形设为false
+                }
+            };
+            //动态设置canvas1绘制图形宽高
+            function kck(yy, yy2) {
+                var WHarry = null;
+                if (yy2) { //如果按下 shift键，就加高
+                    defaultHSize += yy;
+                    WHarry = portray({ "translsteCan": [translsteValueX, translsteValueY] }, ImgsShape, ctx1, defaultSize, defaultHSize);
+                } else { //按下ctrl键 就加宽
+                    defaultSize += yy;
+                    WHarry = portray({ "translsteCan": [translsteValueX, translsteValueY] }, ImgsShape, ctx1, defaultSize, defaultHSize);
+                }
+                can2W = WHarry[0];
+                can2H = WHarry[1];
+                canvas2IMG();//把图形存放在另外一个canvas2 注意这里传的参数是要canvas1的宽和高;否则切换按键时可能剪切canvas1图形有偏差
+            }
+
+        
+            //第二个canvas
+            var canvas2 = document.getElementById('canvas2'),
+                          ctx2 = canvas2.getContext('2d');
+            canvas2.width = can2W;
+            canvas2.height = can2H;
+            canvas2IMG();
+
+            function canvas2IMG() {
+                canvas2.width = can2W; //重点设置canvas2的宽，这里的宽是剪切图形尺寸
+                canvas2.height = can2H;
+                ctx2.clearRect(0, 0, can1W, can1H);
+                ctx2.translate(-translsteValueX, -translsteValueY);//重点这里的偏移就是剪切图形在canvas1的反偏移，否侧无法正常显示剪切图形
+
+                ctx2.drawImage(can1, 0, 0, can1W, can1H, 0, 0, can1W, can1H);//剪切canvas1的图形
+            }
+
+            //下载第二个canvas的图片
+            $("#btnBox").on('click', 'span', downloadImg);
+            function downloadImg() {
+                var img = canvas2.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                save(img);
+                //window.location.href = img;
+                // top.window.location = img;
+                // window.location.href(img)
+            }
+
+            function save(imgData) {
+                /**
+     * 在本地进行文件保存
+     * @param  {String} data     要保存到本地的图片数据
+     * @param  {String} filename 文件名
+     */
+                var saveFile = function (data, filename) {
+                 
+                    var save_link = document.createElementNS('http://www.w3.org/1999/xhtml', 'a');//创建一个带有命名空间的A标签
+                    save_link.download = filename;//设置下载download属性，注意要在IE13才支持
+                    save_link.href = data;
+                  
+                   var event = document.createEvent('MouseEvents');//给A标签自定义一个鼠标事件
+                 
+                    event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);//初始化这个鼠标事件
+                    save_link.dispatchEvent(event);//执行这个鼠标事件
+                };
+                // 下载后的问题名
+                var filename = 'baidufe_' + (new Date()).getTime() + '.png';
+                // download
+                saveFile(imgData, filename);
+            }
+
+        });
+    </script>
+</body>
+</html>
