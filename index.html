@@ -44,7 +44,7 @@
             margin-left:10px;
         }
         #btnBox{margin:10px 0 10px 22px; color:#fff;overflow:hidden;}
-        #btnBox a, #btnBox span{
+        #btnBox a{
             display:block;
             background:#999;
             padding:5px;
@@ -52,31 +52,22 @@
             color:#0841c7;
             float:left;
             margin-right:10px;
-        }
-        #btnBox a{
             text-decoration:none;
         }
-        #btnBox span{
-            cursor:pointer;
-        }
-      #btnBox span:active{
+      #btnBox a:active{
              background:#b4233e;
-        }
-        #btnBox .present{
-            color:#999;
-            background:#4f4949;
         }
     </style>
 </head>
 <body>
-    <div id="btnBox"> 按下ctrl键向右拖动鼠标加宽，按下shift键向下拖动鼠标加高，鼠标移入图形按下可拖曳，如果同时按下键盘可同时加宽或高，自动定义图形连续点击切割的图形即可，可撤退10步<br />
+    <div id="btnBox"> 按下ctrl键向右拖动鼠标加宽，按下shift键向下拖动鼠标加高，鼠标移入图形按下可拖曳，如果同时按下键盘可同时加宽或高，自动定义图形连续点击切割的图形即可，可撤退15步<br />
         <a href="javascript:" class="arcImg" data-shape="arcImg">圆形</a>
         <a href="javascript:" class="strokeRectImg present" data-shape="strokeRectImg">矩形形</a>
         <a href="javascript:" class="trigonImg" data-shape="trigonImg" >三角形</a>
         <a href="javascript:" class="pentagramImg" data-shape="pentagramImg">五角形</a>
         <a href="javascript:" class="custom" data-shape="custom">自定义</a>
-        <span id="withdraw">撤退</span>
-        <span style="margin-left:420px;" id="download">点击下载截剪切图片,IE暂不支持</span>
+        <a href="javascript:" id="withdraw">撤退</a>
+        <a href="javascript:" style="margin-left:420px;" id="download">点击下载截剪切图片,IE暂不支持</a>
     </div>
     <div class="box">
         <img id="eleImg" class="shear" src="imge/8821914_104238545177_2.jpg" />
@@ -173,7 +164,7 @@
             }
 
             //切换图形
-            $("#btnBox").on('click', 'a', function (e) {
+            $("#btnBox a[data-shape]").on('click', function (e) {
                 e = e || window.event;
                 clearInterval(setIn);//停止自定义图形的定时器
                 can1Arry.length = 0; //清空自定义图形存放的坐标
@@ -280,13 +271,13 @@
                     setI = setTimeout(function () {
                         clearTimeout(setI);
                         setI = null;
-                        if (withdrawArry.length > 10) { //只能撤退10步
+                        if (withdrawArry.length > 15) { //只能撤退15步
                             withdrawArry.shift();
                             withdrawArry.push(arr) //保存执行图形的参数
                         } else {
                             withdrawArry.push(arr)//保存执行图形的参数
                         }
-                    }, 800)
+                    }, 1000)
                 }
             }();
 
